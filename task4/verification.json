@@ -1,0 +1,11 @@
+{
+  "variant": "E5",
+  "seed": 1,
+  "validation_inputs": 124,
+  "matching_predictions": 124,
+  "max_probability_error": 6.020069122314453e-06,
+  "onnx_bytes": 6097585,
+  "colab_cpu_median_ms": 0.9870074999867029,
+  "colab_cpu_p95_ms": 1.6184168999814117,
+  "phone_speed_tested": false
+}
