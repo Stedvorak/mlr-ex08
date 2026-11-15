@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#163d2a">
-  <title>Leaf lens · Live leaf classifier</title>
+  <title>Leaf lens Â· Live leaf classifier</title>
   <style>
     :root { color-scheme: light; font: 16px/1.5 system-ui, -apple-system, sans-serif; color: #183629; background: #f3f6ef; }
     * { box-sizing: border-box; }
@@ -50,7 +50,7 @@
 <body>
 <main>
   <header>
-    <div class="eyebrow">MLR · Exercise 08</div>
+    <div class="eyebrow">MLR Â· Exercise 08</div>
     <h1>Leaf lens</h1>
     <p class="muted">Place a leaf in the centre. Watch its class probabilities update live.</p>
   </header>
@@ -67,7 +67,7 @@
         <button id="stop" disabled>Stop</button>
         <label class="upload">Choose photo<input id="upload" type="file" accept="image/*" disabled aria-label="Choose a leaf photo"></label>
       </div>
-      <p id="status" role="status">Loading model…</p>
+      <p id="status" role="status">Loading modelâ€¦</p>
       <p class="muted"><small>Photos and camera frames are processed on your device. Camera access needs HTTPS and your permission.</small></p>
     </section>
     <section class="card" aria-label="Classification results">
@@ -79,7 +79,7 @@
   </div>
   <section class="card" aria-label="Model verification">
     <h2>Reference image check</h2>
-    <p class="muted">Compare check_image.png with every probability in check_expected.json.</p>
+    <p class="muted">Compare check_image.png with every probability in check_expected.json. The original JPEG is retained; PNG provides deterministic cross-browser verification.</p>
     <div class="controls"><button id="check" disabled>Run reference check</button></div>
     <pre id="check-result" role="status">Ready after model loading.</pre>
   </section>
@@ -199,7 +199,7 @@ $('start').addEventListener('click', async () => {
   $('stop').disabled = false;
   try {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('Open the HTTPS page in Safari, or choose a photo.');
-    status('Requesting rear camera…');
+    status('Requesting rear cameraâ€¦');
     const nextStream = await navigator.mediaDevices.getUserMedia({
       audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
@@ -213,7 +213,7 @@ $('start').addEventListener('click', async () => {
     if (token !== generation) return;
     running = true;
     $('hint').textContent = 'Keep the leaf centred in the square';
-    status('Live · rear camera');
+    status('Live Â· rear camera');
     loop(token);
   } catch (error) {
     if (token !== generation) return;
@@ -250,7 +250,7 @@ $('upload').addEventListener('change', async event => {
   stopCamera();
   const token = generation;
   const url = URL.createObjectURL(file);
-  status('Classifying photo…');
+  status('Classifying photoâ€¦');
   try {
     const probabilities = await showPhoto(url, token);
     if (probabilities && token === generation) status('Photo classified on your device.');
@@ -262,7 +262,7 @@ $('check').addEventListener('click', async () => {
   stopCamera();
   const token = generation;
   $('check').disabled = true;
-  $('check-result').textContent = 'Checking…';
+  $('check-result').textContent = 'Checkingâ€¦';
   try {
     const expected = await getJSON('./check_expected.json');
     const probabilities = await showPhoto('./check_image.png', token);
@@ -272,11 +272,11 @@ $('check').addEventListener('click', async () => {
     const errors = probabilities.map((p, i) => Math.abs(p - expected[info.classes[i]]));
     const pass = errors.every(error => Number.isFinite(error) && error <= tolerance);
     const lines = info.classes.map((name, i) => name + ': ' + probabilities[i].toPrecision(9) + ' (expected ' + Number(expected[name]).toPrecision(9) + ')');
-    $('check-result').textContent = (pass ? 'PASS' : 'FAIL') + ' · absolute tolerance ' + tolerance + '\n' + lines.join('\n') + '\nMaximum error: ' + Math.max(...errors).toExponential(3);
+    $('check-result').textContent = (pass ? 'PASS' : 'FAIL') + ' Â· absolute tolerance ' + tolerance + '\n' + lines.join('\n') + '\nMaximum error: ' + Math.max(...errors).toExponential(3);
     $('check-result').classList.toggle('error', !pass);
     status(pass ? 'Reference probabilities match.' : 'Reference mismatch; see the check details.', !pass);
   } catch (error) {
-    $('check-result').textContent = 'FAIL · ' + error.message;
+    $('check-result').textContent = 'FAIL Â· ' + error.message;
     $('check-result').classList.add('error');
   } finally { $('check').disabled = false; }
 });
@@ -297,7 +297,7 @@ async function init() {
       title.textContent = name;
       const value = document.createElement('span');
       value.className = 'value';
-      value.textContent = '—';
+      value.textContent = 'â€”';
       const bar = document.createElement('progress');
       bar.max = 1;
       bar.value = 0;
@@ -314,10 +314,11 @@ async function init() {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
     session = await ort.InferenceSession.create('./leaf_model.onnx', { executionProviders: ['wasm'] });
     $('start').disabled = $('upload').disabled = $('check').disabled = false;
-    status('Ready · start the rear camera or choose a photo.');
+    status('Ready Â· start the rear camera or choose a photo.');
   } catch (error) { status('Model loading failed: ' + error.message, true); }
 }
 window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
+

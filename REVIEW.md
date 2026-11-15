@@ -1,73 +1,65 @@
 # MLR Exercise 08 — Code and mobile review
 
 Repository: https://github.com/Stedvorak/mlr-ex08  
-Published application: https://stedvorak.github.io/mlr-ex08/  
-Candidate E5 mobile page: https://stedvorak.github.io/mlr-ex08/e5/
+Production application: https://stedvorak.github.io/mlr-ex08/  
+E5 candidate: https://stedvorak.github.io/mlr-ex08/e5/
 
-## 1. Application and implementation review (Task 2)
+## Task 2 — Implementation review
 
-The application is a static HTML/JavaScript page using ONNX Runtime Web 1.20.1 and single-threaded WASM. The ONNX model and `model_info.json` are loaded from the repository. Inference runs locally in the browser, not on a remote prediction server. The UI provides a rear-camera option, photo upload fallback, all four class probabilities (apple, cherry, chestnut, maple), prediction time, a QR code and a reference check.
+The static HTML/JavaScript application loads `leaf_model.onnx` and `model_info.json` into ONNX Runtime Web 1.20.1 (single-threaded WASM). Inference is performed locally in the browser. The interface includes rear-camera access, photo upload, all four class probabilities (apple, cherry, chestnut, maple), prediction time, a QR code, and a numerical reference check.
 
-The shared `preprocess()` function takes a central square crop, resizes to 96 × 96 pixels, reads RGB values from canvas, scales to [0, 1], normalizes with the mean and standard deviation from `model_info.json`, and constructs a float32 NCHW tensor `[1,3,96,96]`. The model outputs logits, which the page converts to probabilities using numerically stable softmax. The camera loop serializes inference to avoid overlapping predictions. The page requests the environment-facing camera over HTTPS and allows a photo when camera permission is unavailable.
+The common `preprocess()` path centrally crops the image to a square, resizes it to 96 × 96, converts RGB channels to `[0,1]`, standardizes with the mean/std from `model_info.json`, and constructs a float32 NCHW tensor `[1,3,96,96]`. Model logits are converted to probabilities with stable softmax. Inference requests are serialized to avoid overlap. Camera access requires HTTPS; uploading a photo is the fallback.
 
-### Code-review findings
-
-| Requirement / aspect | Finding | Evidence or limitation |
+| Requirement | Finding | Evidence / caveat |
 | --- | --- | --- |
 | Public mobile page | Implemented | GitHub Pages URL above |
-| ONNX inference in browser | Implemented | `index.html`, ONNX Runtime Web with WASM |
-| Input preprocessing | Implemented | Shared `preprocess()` for camera, upload and reference check |
-| Four class probabilities | Implemented | Softmax of four logits, progress bars and numeric values |
-| Rear camera and upload fallback | Implemented | `getUserMedia` and file input; camera operation not independently measured in this report |
-| QR / link to public page | Implemented | Footer link and embedded QR |
-| Reference image numerical comparison | Implemented, **cross-browser issue remains on main page** | See measured JPEG/PNG comparison below |
-| Model and metadata consistency | Verified in published Task 4 checks | Class order and input/output shapes reported in `task4/README.md` |
+| Browser-based ONNX inference | Implemented | `index.html`, ONNX Runtime Web / WASM |
+| Correct input preprocessing | Implemented | Shared `preprocess()` for video, upload and reference |
+| Four class probabilities | Implemented | All class values and progress bars |
+| Rear camera / photo upload | Implemented | `getUserMedia`, file input; continuous camera performance not benchmarked |
+| Public link / QR code | Implemented | Footer of production page |
+| Reference image check | **PASS on iPhone Safari after PNG fix** | Production page screenshot below; tolerance `0.0001` |
+| Model metadata | Consistent | Class order and preprocessing specified in `model_info.json` |
 
-## 2. Reference check on desktop and phone
+## Cross-browser reference debugging and final fix
 
-The original reference file `check_image.jpg` produced different decoded pixels on Windows Chrome and iPhone Safari, even though both used the same 96 × 96 image and the same code. The difference was already visible in the canvas RGBA data, before inference. Pixel 4096, for example, was `[162,162,150,255]` on Chrome but `[164,161,154,255]` on Safari. Therefore this was a browser JPEG decoding/color-processing discrepancy, not evidence that the ONNX model itself changed.
+The original `check_image.jpg` decoded differently in Windows Chrome and iPhone Safari. The mismatch occurred in canvas RGBA pixels *before* ONNX inference. For example, pixel 4096 was `[162,162,150,255]` in Chrome and `[164,161,154,255]` in Safari. A lossless `check_image.png` was generated from the Chrome-verified reference pixels. The original JPEG, ONNX model, and `check_expected.json` were retained.
 
-| Reference / browser | RGBA FNV-1a | Tensor FNV-1a | Apple | Cherry | Maximum absolute error | Result |
+| Reference / browser | RGBA hash | Tensor hash | Apple probability | Cherry probability | Max. abs. error | Result |
 | --- | --- | --- | ---: | ---: | ---: | --- |
 | JPEG / Windows Chrome | `eeb06748` | `3d21aad1` | 0.343547320 | 0.656451451 | 0.000004364 | PASS |
 | JPEG / iPhone Safari | `c45e9ef4` | `f6171ff8` | 0.243047744 | 0.756951413 | 0.100495598 | FAIL |
 | PNG / Windows Chrome | `eeb06748` | `3d21aad1` | 0.343547320 | 0.656451451 | 0.000004364 | PASS |
 | PNG / iPhone Safari | `eeb06748` | `3d21aad1` | 0.343547320 | 0.656451451 | 0.000004364 | PASS |
 
-Expected probabilities from `check_expected.json`: apple `0.34354305267333984`, cherry `0.6564558148384094`, chestnut `0.000001200799374601047`, maple `0.000000028531562890066198`. The absolute tolerance is `0.0001`.
+The expected probabilities are stored in `check_expected.json`; the absolute tolerance is `0.0001`. Both separate PNG diagnostics returned `rgbaMatchesChrome: true`, `tensorMatchesChrome: true`, `numericalPass: true`, and `pass: true`.
 
-The lossless `check_image.png` preserves the reference pixel values. Independent runs of `debug_png.html` on Windows Chrome and iPhone Safari both returned `rgbaMatchesChrome: true`, `tensorMatchesChrome: true`, `numericalPass: true`, and `pass: true`. Their maximum error was `4.3638705657933485e-6`. The original JPEG and expected-probability file were retained unchanged.
+**Final production retest (15 November 2026):** The root `index.html` was updated to use `check_image.png` for its reference check. The production page on iPhone Safari explicitly displayed `Compare check_image.png`, `PASS`, and **maximum error `4.364e-6`**. It showed apple `0.343547320`, cherry `0.656451451`, chestnut `0.00000120079196`, and maple `2.85310201e-8`. The same screen displayed **42 ms per prediction** for this single reference run. The PNG fix therefore passed on the production page, not just the separate diagnostic page. No claim of statistically representative mobile speed is made.
 
-**Important status at submission preparation:** The published root `index.html` was still referencing `check_image.jpg` when inspected. Its main **Run reference check** consequently still failed on iPhone Safari. The separate PNG diagnostic **passed** on both devices. Do not report the main production check as fixed unless the `index.html` reference is actually changed and retested. The minimal fix is to use `check_image.png` for the reference check only; the model and camera/photo pipeline should remain unchanged.
+## Task 4 — Candidate phone test
 
-## 3. Mobile candidate test (Task 4)
+The separate E5 page was tested on iPhone Safari with an uploaded maple leaf photo. It predicted **maple at 89.313267%**, with **54 ms** displayed for that one inference. This is a functional check, not a representative accuracy or latency benchmark. The E5 candidate remains separate from the original Task 2 classifier.
 
-The separate E5 candidate page was opened on iPhone and a photo of a maple leaf was classified as **maple with 89.313267% probability**, with a displayed inference time of **54 ms**. This is a single functional test, **not** a benchmark over many frames, phones or images.
+## Screenshots
 
-## 4. Screenshots / visual evidence
+### Production PNG reference check — PASS on iPhone Safari
 
-The screenshots below were captured on iPhone Safari and are included in the `screenshots/` directory. PNG diagnostic PASS on both platforms is documented by the numerical measurements in Section 2; there is no screenshot of that diagnostic.
+![Production reference check showing PASS and maximum error 4.364e-6](screenshots/safari_png_reference_pass.jpeg)
 
-### Task 2 — original JPEG reference check (FAIL on Safari)
+![Production class probabilities on iPhone Safari](screenshots/safari_png_probabilities.jpeg)
 
-![Original JPEG reference check on iPhone Safari showing FAIL](screenshots/safari_jpeg_reference_fail.png)
+### Earlier JPEG issue — FAIL on iPhone Safari
 
-This documents the original JPEG mismatch; it is **not** evidence of a passing production reference check.
+![Original JPEG reference check showing FAIL](screenshots/safari_jpeg_reference_fail.png)
 
-### Task 2 — original model probabilities
+![Original JPEG reference probabilities](screenshots/safari_original_model_probabilities.jpeg)
 
-![Original classifier probabilities on iPhone Safari](screenshots/safari_original_model_probabilities.jpeg)
+### E5 candidate mobile test
 
-The displayed result is cherry (~75.695%), with a single displayed prediction time of 14 ms.
+![Uploaded maple leaf on E5 page](screenshots/e5_maple_photo.jpeg)
 
-### Task 4 — E5 candidate on iPhone
+![E5 mobile prediction of maple](screenshots/e5_maple_probabilities.png)
 
-![Uploaded maple leaf on the E5 candidate page](screenshots/e5_maple_photo.jpeg)
+## Conclusion
 
-![E5 candidate probabilities: maple 89.313267%, 54 ms](screenshots/e5_maple_probabilities.png)
-
-The E5 model predicted maple at 89.313267% with 54 ms displayed for this one example. It is a functional test, not a multi-image benchmark.
-
-## 5. Review conclusion
-
-The static ONNX web application implements the core classification and mobile interaction flow. A genuine cross-browser JPEG decoding difference was identified through pixel hashes and tensor hashes. A lossless PNG reference passed independently on Chrome and Safari without changing the model or expected values. At the time of this review, the root-page reference check had not yet been switched to PNG; this is an explicit outstanding limitation rather than a claimed success.
+The original leaf classifier is publicly available and its production PNG reference check now **passes on iPhone Safari**. The previous JPEG mismatch was traced to browser-dependent decoded pixels, and the PNG replacement resolved it without changing the model or expected values. The separate E5 candidate was also successfully exercised on an uploaded phone photo. Broader real-world performance remains unmeasured.
