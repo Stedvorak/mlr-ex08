@@ -265,7 +265,7 @@ $('check').addEventListener('click', async () => {
   $('check-result').textContent = 'Checking…';
   try {
     const expected = await getJSON('./check_expected.json');
-    const probabilities = await showPhoto('./check_image.jpg', token);
+    const probabilities = await showPhoto('./check_image.png', token);
     if (token !== generation || !probabilities) { $('check-result').textContent = 'Check cancelled by a new camera or photo selection.'; return; }
     // Different JPEG decoders and WASM/native float arithmetic can differ slightly.
     const tolerance = 0.0001;
